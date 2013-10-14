@@ -4,11 +4,6 @@ import cairo
 bg = (1,1,1)
 fg = (0,0,0)
 
-class TestCharSrc():
-	def __getitem__(self, slice):
-		row, col = slice.start, slice.stop
-		return chr(ord('a')+(row+col)%26)
-
 class MyW(gtk.DrawingArea):
 	__gsignals__ = { "expose-event":"override"}
 
@@ -31,7 +26,7 @@ class MyW(gtk.DrawingArea):
 		for row in range(height//ch):
 			for col in range(width//cw):
 				cr.move_to(cw*col, ch * (row + 1))
-				cr.show_text(self.csrc[row:col])
+				cr.show_text(self.content(row,col))
 
 
 class ThrowawayDocument:
@@ -44,13 +39,19 @@ class ThrowawayDocument:
 		else:
 			self.lines[-1]+=[chr]
 
-	def __getitem__(self, slice):
-		row, col = slice.start, slice.stop
+	def content(self, row, col):
 		if row < len(self.lines):
 			r = self.lines[row]
 			if col < len(r):
 				return r[col]
+			elif col == len(r) and row == len(self.lines)-1:
+				return '|'
 		return ' '
+	def back(self):
+		if self.lines[-1]:
+			self.lines[-1] = self.lines[-1][:-1]
+		elif len(self.lines) - 1:
+			self.lines = self.lines[:-1]
 
 t = ThrowawayDocument()
 w = MyW(t)
@@ -66,9 +67,11 @@ t.add('\n')
 def kepress(w, e):
 	if (e.keyval < 128):
 		t.add(chr(e.keyval))
-		w.queue_draw()
 	elif (e.keyval == gtk.keysyms.Return):
 		t.add('\n')
+	elif (e.keyval == gtk.keysyms.BackSpace):
+		t.back()
+	w.queue_draw()
 
 window = gtk.Window()
 window.connect('delete-event', gtk.main_quit)
