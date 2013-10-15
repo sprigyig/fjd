@@ -1,8 +1,7 @@
-
-__split_min = 256
-__join_min = 240
-
 class _Node:
+	__join_min = 16
+	__imbal_tol = 5
+
 	def __init__(s, l, r):
 		s.l = l
 		s.r = r
@@ -11,15 +10,25 @@ class _Node:
 		s.leaf = False
 
 	def normalize(s):
-		s.len = l.len + r.len
+		s.len = s.l.len + s.r.len
 		s.nl = s.l.nl+s.r.nl
 
-		if (s.l.leaf and s.r.leaf and s.len < __join_min):
+		if (s.l.leaf and s.r.leaf and s.len < _Node.__join_min):
 			return _Leaf(s.l.c + s.r.c)
 
-		elif (not s.l.leaf and not s.r.leaf):
-			#todo: balance
-			pass
+		elif (not s.l.leaf and s.l.len - s.r.len > _Node.__imbal_tol):
+			l = s.l
+			r = s.r
+			ll, lr = l.l, l.r
+
+			return _Node(ll, _Node(lr, r))
+
+		elif (not s.r.leaf and s.r.len - s.l.len > _Node.__imbal_tol):
+			l = s.l
+			r = s.r
+			rl, rr = r.l, r.r
+
+			return _Node(_Node(l, rl), rr)
 
 		return s
 
@@ -72,6 +81,8 @@ class _Node:
 			return s.l.index(row, col)
 
 class _Leaf:
+	__split_min = 32
+
 	def __init__(s, content):
 		s.c = content
 		s.len = len(content)
@@ -79,8 +90,9 @@ class _Leaf:
 		s.leaf = True
 
 	def normalize(s):
-		if s.len > __split_min:
+		if s.len > _Leaf.__split_min:
 			return _Node(_Leaf(s.c[:s.len//2]), _Leaf(s.c[s.len//2:]))
+		return s
 
 	def insert(s, seq, index):
 		s.c = s.c[:index] + seq + s.c[index:]
@@ -145,5 +157,10 @@ class Rope:
 	def index(self, row, col):
 		return self.node.index(row, col)
 
+	def insert(self, seq, index):
+		self.node = self.node.insert(seq, index)
 
 test = Rope(node=_Node(_Leaf("line1 \nline2\n"),_Node(_Leaf("line3"),_Leaf("\nline4"))))
+test2 = Rope()
+for i in range(100):
+	test2.insert("line %d\n"%i, len(test2))
